@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appendOutcome } from "../src/outcome.js";
 import { invokeCapability } from "../src/invoke.js";
@@ -41,6 +41,7 @@ describe("markitdown capability", () => {
     expect(result.ok).toBe(true);
     expect(result.markdown).toContain("Sample");
     expect(result.markdown).toContain("Hello capability core.");
+    expect(result.markdownChars).toBeGreaterThan(0);
   });
 
   it("invokes with inline input via temporary file", async () => {
@@ -64,9 +65,32 @@ describe("markitdown capability", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(result.markdown).toBeUndefined();
+    expect(result.markdownChars).toBeGreaterThan(0);
     expect(existsSync(outputFile)).toBe(true);
     expect(observedInput).not.toBe(input);
     expect(readFileSync(outputFile, "utf8")).toContain("Inline content.");
+  });
+
+  it("returns compact output when output is supplied unless full-output is requested", async () => {
+    const outputFile = join(tempRoot, "out.md");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html"),
+      inputKind: "path",
+      outputPath: outputFile,
+      runner: () => ({
+        exitCode: 0,
+        stdout: "# Sample\nHello capability core.",
+        stderr: "",
+      }),
+      fullOutput: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.markdown).toContain("Sample");
+    expect(result.markdown).toContain("Hello capability core.");
+    expect(result.outputPath).toBe(resolve(outputFile));
+    expect(result.markdownChars).toBeGreaterThan(0);
   });
 
   it("appends outcome shape", () => {

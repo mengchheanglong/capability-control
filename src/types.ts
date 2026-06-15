@@ -72,7 +72,8 @@ export interface MarkitdownInput {
 export interface MarkitdownOutput {
   ok: boolean;
   capabilityId: "markitdown";
-  markdown: string;
+  markdown?: string;
+  markdownChars?: number;
   outputPath?: string;
   warnings: string[];
   error?: string;

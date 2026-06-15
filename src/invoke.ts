@@ -12,6 +12,7 @@ export interface InvokeOptions {
   input: string;
   inputKind?: "path" | "inline";
   outputPath?: string;
+  fullOutput?: boolean;
   runner?: CommandRunner;
 }
 
@@ -126,10 +127,12 @@ export async function invokeCapability(
       };
     }
 
+    const includeMarkdown = !options.outputPath || options.fullOutput;
     const response: MarkitdownOutput = {
       ok: true,
       capabilityId: manifest.id as "markitdown",
-      markdown,
+      ...(includeMarkdown ? { markdown } : {}),
+      markdownChars: markdown.length,
       warnings: [],
     };
 

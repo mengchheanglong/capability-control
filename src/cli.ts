@@ -29,7 +29,7 @@ function usage(): never {
     "capcore list",
     "capcore find <query>",
     "capcore verify markitdown",
-    "capcore invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>]",
+    "capcore invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>] [--full-output]",
     "capcore report markitdown --outcome <success|partial|failure> --note <text>",
   ].join("\n");
   process.stdout.write(`${text}\n`);
@@ -82,10 +82,12 @@ async function main(): Promise<void> {
         | "path"
         | "inline";
       const outputPath = typeof options.output === "string" ? options.output : undefined;
+      const fullOutput = options["full-output"] === true;
       const result = await invokeCapability(baseDir, capability, {
         input,
         inputKind,
         outputPath,
+        fullOutput,
       });
       console.log(JSON.stringify(result, null, 2));
       if (!result.ok) {
