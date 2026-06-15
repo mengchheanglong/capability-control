@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "capabilityId", "markdown"],
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "capabilityId": {
+      "const": "markitdown"
+    },
+    "markdown": {
+      "type": "string"
+    },
+    "outputPath": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "error": {
+      "type": "string"
+    }
+  }
+}

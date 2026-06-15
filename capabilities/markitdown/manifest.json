@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "markitdown",
+  "name": "MarkItDown",
+  "description": "Convert supported documents or HTML into Markdown.",
+  "status": "candidate",
+  "runtime": {
+    "kind": "local_command",
+    "command": "markitdown",
+    "args": ["{input}"]
+  },
+  "contracts": {
+    "inputSchema": "capabilities/markitdown/input.schema.json",
+    "outputSchema": "capabilities/markitdown/output.schema.json"
+  },
+  "whenToUse": [
+    "Convert a document or HTML file into Markdown before summarizing or extracting content.",
+    "Reduce PDF/document context cost by converting first, then reading the resulting Markdown."
+  ],
+  "failureModes": [
+    "The local markitdown command is not installed or not on PATH.",
+    "The input file type is unsupported or malformed.",
+    "Large documents may need caller-side chunking after conversion."
+  ],
+  "projection": {
+    "hermesSkill": "markitdown",
+    "recommendedInterface": "skill_calls_capcore_invoke"
+  }
+}

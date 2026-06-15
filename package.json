@@ -1,0 +1,16 @@
+{
+  "name": "capability-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "capcore": "tsx src/cli.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.4"
+  }
+}

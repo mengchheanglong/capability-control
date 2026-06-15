@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["input"],
+  "properties": {
+    "input": {
+      "type": "string",
+      "description": "Path to a local file or inline HTML/text input."
+    },
+    "inputKind": {
+      "type": "string",
+      "enum": ["path", "inline"],
+      "default": "path"
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "Optional path where Markdown output should be written."
+    }
+  }
+}
