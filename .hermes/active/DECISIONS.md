@@ -29,3 +29,9 @@ Decision: Create project-local `.hermes` state for capability-core.
 Rationale: User corrected that capability-core should have its own active memory rather than continuing to use old DK `.hermes` for capability-core work.
 Consequence: `C:/Users/User/AppData/Local/hermes/systems/capability-core/.hermes/` is now the authoritative active-memory folder for capability-core.
 Approved by: user correction
+
+## 2026-06-15
+Decision: Complete compact stdout cleanup for `invoke --output`.
+Rationale: Real PDF use proved conversion works but stdout bloat was unsafe for Hermes context. Codex implemented compact default metadata with `--full-output` opt-in, and Hermes independently verified tests, typecheck, sample compact/full modes, and real PDF output.
+Consequence: `pnpm --silent capcore invoke markitdown --input <file> --output <out.md>` now writes Markdown to disk and returns compact JSON metadata only by default. Normal large-document workflow no longer needs stdout-redirection workaround.
+Approved by: user launch + Codex implementation + Hermes verification

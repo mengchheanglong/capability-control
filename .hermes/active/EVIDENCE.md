@@ -51,8 +51,27 @@ Quality notes:
 - Body text is usable for LLM reading and summarization.
 - PDF table formatting remains lossy/mangled as expected.
 
-Operational issue found:
+Operational issue found and resolved:
 
 ```text
-capability-core invoke --output still prints full Markdown payload to stdout JSON.
+Before cleanup: capability-core invoke --output printed full Markdown payload to stdout JSON.
+After cleanup: invoke --output returns compact JSON metadata by default; --full-output opts back into full Markdown stdout.
+```
+
+## 2026-06-15 — compact stdout cleanup verification
+
+Code commit:
+
+```text
+89e6e26 fix: compact invoke output when writing files
+```
+
+Hermes verification:
+
+```text
+pnpm test                         PASS — 2 files, 10 tests
+pnpm run typecheck                PASS
+sample --output compact JSON      PASS — keys: capabilityId, markdownChars, ok, outputPath, warnings; no markdown field
+sample --full-output              PASS — markdown field included
+real PDF --output smoke           PASS — stdout 531 bytes, no book artifact text, output contains Chapter 16
 ```

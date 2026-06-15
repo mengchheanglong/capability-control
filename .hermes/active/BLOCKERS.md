@@ -1,11 +1,11 @@
 # Blockers / Attention Items
 
-No hard blocker.
+No active blocker.
 
-## Attention
+The previous attention item is resolved:
 
-Real PDF smoke passed, but capability-core currently prints the full Markdown payload to stdout even when `--output` is provided. This causes Hermes context bloat.
+```text
+capability-core invoke --output no longer prints the full Markdown payload by default.
+```
 
-Workaround already patched into Hermes `markitdown` skill: redirect stdout to a sidecar JSON file and inspect only metadata.
-
-Recommended cleanup: update capability-core `invoke` output contract so `--output` returns compact metadata by default.
+Use `--full-output` only when full Markdown in stdout is explicitly wanted.

@@ -2,8 +2,8 @@
 
 Mission: Greenfield capability-core MVP
 Branch: `main`
-Status: **REAL PDF SMOKE PASSED / PROJECT-LOCAL .hermes CREATED / CLI OUTPUT CLEANUP NEXT**
-Owner / Worker: Hermes created project-local state; next implementation actor should be Codex if user launches the cleanup
+Status: **COMPACT STDOUT CLEANUP COMPLETE / VERIFIED / CODE COMMITTED**
+Owner / Worker: Codex implemented; Hermes verified and committed code
 
 ## Repository
 
@@ -11,7 +11,7 @@ Owner / Worker: Hermes created project-local state; next implementation actor sh
 C:/Users/User/AppData/Local/hermes/systems/capability-core
 https://github.com/mengchheanglong/capability-core
 Visibility: PRIVATE
-Current HEAD before .hermes state commit: 67ab314 chore: record MarkItDown skill smoke outcome
+Current code commit: 89e6e26 fix: compact invoke output when writing files
 ```
 
 ## What Works
@@ -22,30 +22,40 @@ The greenfield core proves:
 manifest → schema → verify → find → invoke → report outcome
 ```
 
-Previously verified:
+MarkItDown behavior now:
 
 ```text
-pnpm test                                      PASS — 2 files, 9 tests
-pnpm run typecheck                            PASS
-pnpm capcore list                             PASS
-pnpm capcore find "convert pdf to markdown"   PASS
-pnpm capcore verify markitdown                PASS — real evidence written
-pnpm capcore invoke sample.html               PASS
-pnpm capcore report                           PASS
-git rev-list origin/main...HEAD               PASS — 0 0
-git status                                    PASS — ## main...origin/main
+pnpm --silent capcore invoke markitdown --input <file> --output <out.md>
 ```
 
-Real document smoke:
+returns compact JSON metadata by default:
+
+```text
+ok, capabilityId, markdownChars, warnings, outputPath
+```
+
+and omits the full `markdown` field unless `--full-output` is explicitly supplied.
+
+## Verification
+
+Hermes verified after Codex implementation:
+
+```text
+pnpm test                         PASS — 2 files, 10 tests
+pnpm run typecheck                PASS
+sample --output compact JSON      PASS — no markdown field
+sample --full-output              PASS — markdown field included
+real PDF --output smoke           PASS — output file written, stdout 531 bytes, no book text in stdout
+```
+
+Real PDF smoke details:
 
 ```text
 Source: C:/Users/User/Social Systems/Research, Data & Thinking Tools/Social Science Research_ Principles Methods and Practices.pdf
-Result: C:/Users/User/Social Systems/Research, Data & Thinking Tools/Social Science Research_ Principles Methods and Practices.md
-PDF: 2,115,821 bytes
-MD: 5,807 lines / 469,173 bytes
-Hermes repro via pnpm capcore invoke: ok=true, 49.841s
-Hermes repro output compared to user MD: identical
-Markers present: Chapter 1, Chapter 16, Appendix
+Output: C:/Users/User/AppData/Local/Temp/capcore-real-pdf-smoke-hermes.md
+stdout keys: capabilityId, markdownChars, ok, outputPath, warnings
+stdout_has_book_artifact: false
+output_has_chapter_16: true
 ```
 
 ## Skill Integration
@@ -56,23 +66,16 @@ Hermes `markitdown` skill routes:
 capability-core MarkItDown first → DK projection fallback → direct Python fallback only
 ```
 
-## Why this `.hermes` exists
+The skill was patched again after this cleanup to remove the old warning/workaround and document the new compact stdout behavior.
 
-User corrected that capability-core should have its own `.hermes` state rather than continuing to store active state under old DK.
+## What Is Not Built
 
-This folder is now the authoritative active memory for capability-core work.
-
-## Needs Attention
-
-One small operational cleanup is justified by real use:
-
-```text
-capability-core invoke currently prints full Markdown in JSON stdout even when --output is supplied.
-```
-
-This causes context bloat for real documents. The Hermes `markitdown` skill has a workaround, but capability-core itself should return compact metadata by default when `--output` is used.
+- No MCP server.
+- No dashboard.
+- No second capability.
+- No old DK source refactor.
 
 ## Last Meaningful Update
 
-- 2026-06-15 12:21:56 SEAST
-- Project-local `.hermes` created for capability-core.
+- 2026-06-15 12:36:31 SEAST
+- Compact stdout cleanup implemented by Codex, verified by Hermes, code committed as `89e6e26`.

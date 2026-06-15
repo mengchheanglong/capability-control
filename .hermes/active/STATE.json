@@ -1,7 +1,7 @@
 {
-  "mission": "greenfield_capability_core_markitdown_mvp_real_pdf_smoke_passed",
+  "mission": "greenfield_capability_core_markitdown_mvp_compact_stdout_complete",
   "workstream": "capability_core",
-  "status": "project_local_hermes_state_created_needs_cli_output_cleanup",
+  "status": "complete_verified_committed_pending_push",
   "active_memory_owner": "capability-core",
   "active_memory_path": "C:/Users/User/AppData/Local/hermes/systems/capability-core/.hermes/active",
   "repository": {
@@ -9,8 +9,25 @@
     "github_repo": "https://github.com/mengchheanglong/capability-core",
     "github_visibility": "PRIVATE",
     "branch": "main",
-    "last_synced_commit_before_state_setup": "67ab314",
-    "last_synced_commit_message_before_state_setup": "chore: record MarkItDown skill smoke outcome"
+    "latest_code_commit": "89e6e26",
+    "latest_code_commit_message": "fix: compact invoke output when writing files"
+  },
+  "compact_stdout_cleanup": {
+    "status": "pass",
+    "implemented_by": "Codex",
+    "verified_by": "Hermes",
+    "behavior": {
+      "with_output": "compact JSON metadata by default; markdown omitted",
+      "with_output_and_full_output": "full markdown included in stdout",
+      "without_output": "full markdown behavior preserved"
+    },
+    "verification": {
+      "pnpm_test": "pass_2_files_10_tests",
+      "pnpm_typecheck": "pass",
+      "sample_compact": "pass_no_markdown_field",
+      "sample_full_output": "pass_markdown_field_present",
+      "real_pdf_smoke": "pass_stdout_531_bytes_no_book_artifact_output_contains_chapter_16"
+    }
   },
   "real_pdf_smoke": {
     "status": "pass_with_quality_notes",
@@ -21,17 +38,16 @@
     "markdown_bytes": 469173,
     "capcore_repro_elapsed_seconds": 49.841,
     "capcore_repro_matches_user_markdown": true,
-    "markers_present": ["Chapter 1", "Chapter 16", "Appendix"],
-    "issue_found": "capability-core invoke --output still prints full Markdown payload to stdout JSON"
+    "markers_present": ["Chapter 1", "Chapter 16", "Appendix"]
   },
-  "next_actor": "Codex_if_user_launches_cleanup",
-  "next_action": "fix_capability_core_invoke_output_stdout_to_return_compact_metadata_when_output_path_is_supplied",
-  "current_actor": "Hermes_until_user_launches_Codex_cleanup",
-  "active_handoff": ".hermes/active/HANDOFF.md",
+  "next_actor": "User_or_Hermes_when_real_need_appears",
+  "next_action": "use_capability_core_markitdown_on_next_real_document_or_add_next_capability_only_when_real_workflow_needs_it",
+  "current_actor": "none_waiting_for_real_need",
+  "active_handoff": null,
   "active_ledger": {
     "path": ".hermes/active/TRANSITIONS.jsonl",
-    "transition_count": 1,
-    "last_transition_id": "capcore-project-hermes-init-20260615-122156"
+    "transition_count": 2,
+    "last_transition_id": "capcore-compact-stdout-complete-20260615-123631"
   },
   "boundaries": {
     "mcp_server": false,
@@ -39,5 +55,5 @@
     "second_capability": false,
     "old_dk_refactor": false
   },
-  "last_updated": "2026-06-15 12:21:56 SEAST"
+  "last_updated": "2026-06-15 12:36:31 SEAST"
 }

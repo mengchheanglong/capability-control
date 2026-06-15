@@ -1,0 +1,30 @@
+Implemented and verified.
+
+- Code updated for compact default stdout when `--output` is supplied, with `--full-output` opt-in.
+
+Updated files:
+- [src/types.ts](/C:/Users/User/AppData/Local/hermes/systems/capability-core/src/types.ts)
+- [src/invoke.ts](/C:/Users/User/AppData/Local/hermes/systems/capability-core/src/invoke.ts)
+- [src/cli.ts](/C:/Users/User/AppData/Local/hermes/systems/capability-core/src/cli.ts)
+- [capabilities/markitdown/output.schema.json](/C:/Users/User/AppData/Local/hermes/systems/capability-core/capabilities/markitdown/output.schema.json)
+- [tests/markitdown-capability.test.ts](/C:/Users/User/AppData/Local/hermes/systems/capability-core/tests/markitdown-capability.test.ts)
+
+Behavior now:
+- `--output <path>`: stdout is compact metadata:
+  - `ok`, `capabilityId`, `outputPath`, `markdownChars`, `warnings`
+  - `markdown` omitted by default
+- No `--output` path: full `markdown` is returned (existing behavior preserved for small/inline usage)
+- Added explicit `--full-output` to return full markdown even with `--output`
+
+Required verification completed:
+1. `pnpm test` ✅ (10/10)
+2. `pnpm run typecheck` ✅
+3. Real PDF smoke command executed successfully:
+   - `pnpm capcore invoke markitdown --input "C:/Users/User/Social Systems/Research, Data & Thinking Tools/Social Science Research_ Principles Methods and Practices.pdf" --output "C:/Users/User/AppData/Local/Temp/capcore-real-pdf-smoke.md"` ✅
+   - Markdown file exists and is non-empty: `469173` bytes
+   - Stdout was compact JSON metadata, no full markdown payload
+
+Final report written to:
+- [.hermes/evaluations/compact-stdout-cleanup/codex-final.txt](/C:/Users/User/AppData/Local/hermes/systems/capability-core/.hermes/evaluations/compact-stdout-cleanup/codex-final.txt)
+
+No commit/push performed.
