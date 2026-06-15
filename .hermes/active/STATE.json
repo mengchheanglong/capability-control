@@ -1,0 +1,43 @@
+{
+  "mission": "greenfield_capability_core_markitdown_mvp_real_pdf_smoke_passed",
+  "workstream": "capability_core",
+  "status": "project_local_hermes_state_created_needs_cli_output_cleanup",
+  "active_memory_owner": "capability-core",
+  "active_memory_path": "C:/Users/User/AppData/Local/hermes/systems/capability-core/.hermes/active",
+  "repository": {
+    "path": "C:/Users/User/AppData/Local/hermes/systems/capability-core",
+    "github_repo": "https://github.com/mengchheanglong/capability-core",
+    "github_visibility": "PRIVATE",
+    "branch": "main",
+    "last_synced_commit_before_state_setup": "67ab314",
+    "last_synced_commit_message_before_state_setup": "chore: record MarkItDown skill smoke outcome"
+  },
+  "real_pdf_smoke": {
+    "status": "pass_with_quality_notes",
+    "source_pdf": "C:/Users/User/Social Systems/Research, Data & Thinking Tools/Social Science Research_ Principles Methods and Practices.pdf",
+    "user_markdown": "C:/Users/User/Social Systems/Research, Data & Thinking Tools/Social Science Research_ Principles Methods and Practices.md",
+    "pdf_bytes": 2115821,
+    "markdown_lines": 5807,
+    "markdown_bytes": 469173,
+    "capcore_repro_elapsed_seconds": 49.841,
+    "capcore_repro_matches_user_markdown": true,
+    "markers_present": ["Chapter 1", "Chapter 16", "Appendix"],
+    "issue_found": "capability-core invoke --output still prints full Markdown payload to stdout JSON"
+  },
+  "next_actor": "Codex_if_user_launches_cleanup",
+  "next_action": "fix_capability_core_invoke_output_stdout_to_return_compact_metadata_when_output_path_is_supplied",
+  "current_actor": "Hermes_until_user_launches_Codex_cleanup",
+  "active_handoff": ".hermes/active/HANDOFF.md",
+  "active_ledger": {
+    "path": ".hermes/active/TRANSITIONS.jsonl",
+    "transition_count": 1,
+    "last_transition_id": "capcore-project-hermes-init-20260615-122156"
+  },
+  "boundaries": {
+    "mcp_server": false,
+    "dashboard": false,
+    "second_capability": false,
+    "old_dk_refactor": false
+  },
+  "last_updated": "2026-06-15 12:21:56 SEAST"
+}
