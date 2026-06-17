@@ -22,8 +22,8 @@
     "The input file type is unsupported or malformed.",
     "Large documents may need caller-side chunking after conversion."
   ],
-  "projection": {
+    "projection": {
     "hermesSkill": "markitdown",
-    "recommendedInterface": "skill_calls_capcore_invoke"
+    "recommendedInterface": "skill_calls_capcontrol_invoke"
   }
 }

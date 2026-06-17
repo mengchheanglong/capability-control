@@ -149,7 +149,7 @@ export async function invokeCapability(
     }
 
     if (inputKind === "inline") {
-      const tmp = mkdtempSync(join(tmpdir(), `capcore-${manifest.id}-`));
+      const tmp = mkdtempSync(join(tmpdir(), `capcontrol-${manifest.id}-`));
       tempPath = join(tmp, `inline-${Date.now()}.html`);
       writeFileSync(tempPath, input, "utf8");
       commandInput = tempPath;

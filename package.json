@@ -6,8 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "capcontrol": "tsx src/cli.ts",
-    "capcore": "pnpm capcontrol"
+    "capcontrol": "tsx src/cli.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.3",
