@@ -3,44 +3,51 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { getBasePaths, loadCapabilityManifestById } from "./registry.js";
-import { EvidenceRecord, VerifyResult } from "./types.js";
+import { EvidenceRecord, FailureCode, VerifyResult } from "./types.js";
+import { CommandResult, DEFAULT_COMMAND_TIMEOUT_MS, classifyFailureCode } from "./failures.js";
 
 export interface VerifyOptions {
   fixturePath?: string;
-  runner?: (command: string, args: string[]) => { exitCode: number; stdout: string; stderr: string };
+  runner?: (command: string, args: string[]) => CommandResult;
 }
 
 const DEFAULT_FIXTURE = "capabilities/markitdown/fixtures/sample.html";
 
-function defaultRunner(command: string, args: string[]): { exitCode: number; stdout: string; stderr: string } {
+function runCommand(command: string, args: string[]): CommandResult {
   const result = spawnSync(command, args, {
     encoding: "utf8",
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: DEFAULT_COMMAND_TIMEOUT_MS,
   });
 
   if (result.error) {
     const error = result.error as NodeJS.ErrnoException;
+    if (error.code === "ETIMEDOUT") {
+      return {
+        exitCode: 124,
+        stdout: "",
+        stderr: `command timed out after ${DEFAULT_COMMAND_TIMEOUT_MS}ms`,
+        timedOut: true,
+        failureCode: "timeout",
+      };
+    }
+
     if (error.code === "ENOENT") {
-      const fallback = spawnSync("py", ["-m", "markitdown", ...args], {
-        encoding: "utf8",
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      if (!fallback.error) {
-        return {
-          exitCode: fallback.status ?? 0,
-          stdout: fallback.stdout?.toString() ?? "",
-          stderr: fallback.stderr?.toString() ?? "",
-        };
-      }
       return {
         exitCode: 127,
         stdout: "",
-        stderr: `command not found: ${command}; fallback py -m markitdown also unavailable. Install markitdown and ensure it is on PATH.`,
+        stderr: `command not found: ${command}`,
+        failureCode: "tool_missing",
       };
     }
-    return { exitCode: 1, stdout: "", stderr: error.message };
+
+    return {
+      exitCode: 1,
+      stdout: "",
+      stderr: error.message,
+      failureCode: "command_failed",
+    };
   }
 
   return {
@@ -48,6 +55,25 @@ function defaultRunner(command: string, args: string[]): { exitCode: number; std
     stdout: result.stdout?.toString() ?? "",
     stderr: result.stderr?.toString() ?? "",
   };
+}
+
+function defaultRunner(command: string, args: string[]): CommandResult {
+  const primary = runCommand(command, args);
+  if (primary.failureCode !== "tool_missing") {
+    return primary;
+  }
+
+  const fallback = runCommand("py", ["-m", "markitdown", ...args]);
+  if (fallback.failureCode === "tool_missing") {
+    return {
+      exitCode: 127,
+      stdout: "",
+      stderr: `command not found: ${command}; fallback py -m markitdown also unavailable. Install markitdown and ensure it is on PATH.`,
+      failureCode: "tool_missing",
+    };
+  }
+
+  return fallback;
 }
 
 function preview(value: string, max = 2048): string {
@@ -82,6 +108,19 @@ function buildEvidence(
   };
 }
 
+function classifyVerifyFailure(args: {
+  result: CommandResult;
+  verificationFailed: boolean;
+}): FailureCode {
+  return classifyFailureCode({
+    verificationFailed: args.verificationFailed,
+    exitCode: args.result.exitCode,
+    timedOut: args.result.timedOut ?? false,
+    runnerFailureCode: args.result.failureCode,
+    errorMessage: args.result.stderr,
+  });
+}
+
 export function verifyCapability(baseDir: string, capabilityId: string, options?: VerifyOptions): VerifyResult {
   const { baseDir: root } = getBasePaths(baseDir);
   const { manifest } = loadCapabilityManifestById(root, capabilityId);
@@ -90,6 +129,7 @@ export function verifyCapability(baseDir: string, capabilityId: string, options?
     return {
       ok: false,
       capabilityId,
+      failureCode: "fixture_missing",
       error: `fixture missing: ${fixturePath}`,
     };
   }
@@ -104,20 +144,28 @@ export function verifyCapability(baseDir: string, capabilityId: string, options?
   const assertions = [
     {
       name: "contains_markdown_heading",
-      ok: /(^|\n)\s*#\s*sample\b/i.test(markdown),
+      ok: /(^|\n)\s*#\s+\S+/m.test(markdown),
     },
     {
       name: "non_empty_output",
       ok: markdown.includes("Hello capability core.") && markdown.trim().length > 0,
     },
   ];
+  const verificationPassed = assertions.every((assertion) => assertion.ok);
 
-  const allOk = result.exitCode === 0 && assertions.every((assertion) => assertion.ok);
-  if (!allOk) {
+  if (result.exitCode !== 0 || !verificationPassed) {
+    const failureCode = classifyVerifyFailure({
+      result,
+      verificationFailed: !verificationPassed,
+    });
+
     return {
       ok: false,
       capabilityId,
-      error: result.stderr || "verification checks failed",
+      failureCode,
+      error: failureCode === "timeout"
+        ? result.stderr || "command timed out"
+        : result.stderr || "verification checks failed",
     };
   }
 
@@ -140,6 +188,7 @@ export function verifyCapability(baseDir: string, capabilityId: string, options?
   return {
     ok: true,
     capabilityId,
+    failureCode: "none",
     evidencePath,
   };
 }

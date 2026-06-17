@@ -69,6 +69,19 @@ export interface MarkitdownInput {
   outputPath?: string;
 }
 
+export type FailureCode =
+  | "none"
+  | "tool_missing"
+  | "input_invalid"
+  | "unsupported_input"
+  | "path_policy_violation"
+  | "command_failed"
+  | "timeout"
+  | "output_invalid"
+  | "fixture_missing"
+  | "verification_failed"
+  | "unknown";
+
 export interface MarkitdownOutput {
   ok: boolean;
   capabilityId: "markitdown";
@@ -76,12 +89,32 @@ export interface MarkitdownOutput {
   markdownChars?: number;
   outputPath?: string;
   warnings: string[];
+  failureCode: FailureCode;
+  timedOut?: boolean;
   error?: string;
 }
 
 export interface VerifyResult {
   ok: boolean;
   capabilityId: string;
+  failureCode: FailureCode;
   evidencePath?: string;
   error?: string;
+}
+
+export interface HealthCapabilityStatus {
+  id: string;
+  status: "available" | "unavailable";
+  liveVerified: boolean;
+  lastVerifiedAt: string | null;
+  failureCode: FailureCode;
+  error: string | null;
+  fallback?: string;
+}
+
+export interface HealthResult {
+  ok: boolean;
+  checkedAt: string;
+  ledgerPath?: string;
+  capabilities: HealthCapabilityStatus[];
 }

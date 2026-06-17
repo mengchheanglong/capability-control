@@ -18,6 +18,26 @@
       "minimum": 0,
       "description": "Character count of markdown produced by markitdown."
     },
+    "failureCode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "tool_missing",
+        "input_invalid",
+        "unsupported_input",
+        "path_policy_violation",
+        "command_failed",
+        "timeout",
+        "output_invalid",
+        "fixture_missing",
+        "verification_failed",
+        "unknown"
+      ]
+    },
+    "timedOut": {
+      "type": "boolean",
+      "default": false
+    },
     "outputPath": {
       "type": "string"
     },

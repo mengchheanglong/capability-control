@@ -1,12 +1,13 @@
 {
-  "name": "capability-core",
+  "name": "capability-control",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "capcore": "tsx src/cli.ts"
+    "capcontrol": "tsx src/cli.ts",
+    "capcore": "pnpm capcontrol"
   },
   "devDependencies": {
     "tsx": "^4.19.3",

@@ -1,7 +1,10 @@
 import { appendOutcome } from "./outcome.js";
+import { appendCapabilityEvent, readCapabilityEvents } from "./ledger.js";
 import { findCapabilities, listCapabilities } from "./registry.js";
 import { verifyCapability } from "./verify.js";
 import { invokeCapability } from "./invoke.js";
+import { healthCheck } from "./health.js";
+import { parseInvokeArgs } from "./validation.js";
 
 interface ParsedArgs {
   [key: string]: string | boolean;
@@ -26,11 +29,13 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function usage(): never {
   const text = [
-    "capcore list",
-    "capcore find <query>",
-    "capcore verify markitdown",
-    "capcore invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>] [--full-output]",
-    "capcore report markitdown --outcome <success|partial|failure> --note <text>",
+    "capcontrol list",
+    "capcontrol find <query>",
+    "capcontrol verify markitdown",
+    "capcontrol health [capability]",
+    "capcontrol invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>] [--full-output]",
+    "capcontrol events [--limit <N>]",
+    "capcontrol report markitdown --outcome <success|partial|failure> --note <text>",
   ].join("\n");
   process.stdout.write(`${text}\n`);
   process.exit(1);
@@ -61,20 +66,36 @@ async function main(): Promise<void> {
       if (!capability) usage();
       const result = verifyCapability(baseDir, capability);
       if (!result.ok) {
-        console.error(JSON.stringify({ ok: false, error: result.error }, null, 2));
+        console.error(JSON.stringify({
+          ok: false,
+          capabilityId: result.capabilityId,
+          failureCode: result.failureCode,
+          error: result.error,
+        }, null, 2));
         process.exit(1);
         return;
       }
-      console.log(JSON.stringify({ ok: true, capabilityId: result.capabilityId, evidencePath: result.evidencePath }, null, 2));
+      console.log(JSON.stringify({
+        ok: true,
+        capabilityId: result.capabilityId,
+        failureCode: result.failureCode,
+        evidencePath: result.evidencePath,
+      }, null, 2));
       return;
     }
     case "invoke": {
       const capability = argv[1];
       if (!capability) usage();
-      const options = parseArgs(argv.slice(2));
+      const parseResult = parseInvokeArgs(argv.slice(2));
+      if (parseResult.error) {
+        console.error(JSON.stringify({ ok: false, error: parseResult.error }, null, 2));
+        process.exit(1);
+        return;
+      }
+      const options = parseResult.value;
       const input = typeof options.input === "string" ? options.input : "";
       if (!input) {
-        console.error("Missing --input");
+        console.error(JSON.stringify({ ok: false, error: "Missing required option: --input" }, null, 2));
         process.exit(1);
         return;
       }
@@ -89,11 +110,71 @@ async function main(): Promise<void> {
         outputPath,
         fullOutput,
       });
+      const message = result.ok ? "invoke succeeded" : result.error || result.warnings[0] || "invoke failed";
+      try {
+        appendCapabilityEvent(baseDir, {
+          capabilityId: capability,
+          action: "invoke",
+          ok: result.ok,
+          status: result.ok ? "available" : "unavailable",
+          failureCode: result.failureCode,
+          message,
+        });
+      } catch (error) {
+        const warning = error instanceof Error ? error.message : "Unable to append invoke event";
+        console.error(JSON.stringify({ warning }, null, 2));
+      }
       console.log(JSON.stringify(result, null, 2));
       if (!result.ok) {
         process.exit(1);
       }
       return;
+    }
+    case "health": {
+      const capability = argv[1];
+      const result = healthCheck(baseDir, capability);
+      console.log(JSON.stringify(result, null, 2));
+      if (!result.ok) {
+        process.exit(1);
+      }
+      return;
+    }
+    case "events": {
+      const options = parseArgs(argv.slice(1));
+      const limitArg = options.limit;
+      let parsedLimit: number | undefined;
+      if (typeof limitArg === "string") {
+        parsedLimit = Number.parseInt(limitArg, 10);
+      }
+      if (typeof parsedLimit === "number" && !Number.isFinite(parsedLimit)) {
+        console.error(JSON.stringify({ ok: false, error: "--limit must be a valid integer" }, null, 2));
+        process.exit(1);
+        return;
+      }
+      if (parsedLimit !== undefined && parsedLimit <= 0) {
+        console.error(JSON.stringify({ ok: false, error: "--limit must be a positive integer" }, null, 2));
+        process.exit(1);
+        return;
+      }
+
+      try {
+        const eventsResult = readCapabilityEvents(baseDir, parsedLimit ? { limit: parsedLimit } : {});
+        const response = {
+          ok: true,
+          path: eventsResult.path,
+          events: eventsResult.events,
+        };
+        if (eventsResult.malformedLines > 0) {
+          Object.assign(response, { warnings: { malformedLines: eventsResult.malformedLines } });
+        }
+        console.log(JSON.stringify(response, null, 2));
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to read events";
+        console.error(JSON.stringify({ ok: false, error: message }, null, 2));
+        process.exit(1);
+        return;
+      }
     }
     case "report": {
       const capability = argv[1];

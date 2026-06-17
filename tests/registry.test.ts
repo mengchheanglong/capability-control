@@ -6,7 +6,7 @@ import { findCapabilities, listCapabilities, loadCapabilityManifestById } from "
 const repoRoot = process.cwd();
 
 function createFixtureRoot(): string {
-  const root = mkdtempSync(join(process.cwd(), "capability-core-registry-"));
+  const root = mkdtempSync(join(process.cwd(), "capability-control-registry-"));
   mkdirSync(join(root, "capabilities", "markitdown", "fixtures"), { recursive: true });
   cpSync(join(repoRoot, "capabilities", "markitdown"), join(root, "capabilities", "markitdown"), { recursive: true });
   mkdirSync(join(root, "evidence"), { recursive: true });

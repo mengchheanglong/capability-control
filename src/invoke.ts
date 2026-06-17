@@ -3,10 +3,12 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
-import { CapabilityManifest, MarkitdownOutput } from "./types.js";
+import { CapabilityManifest, FailureCode, MarkitdownOutput } from "./types.js";
 import { getBasePaths, loadCapabilityManifestById } from "./registry.js";
+import { isMarkdownLike, normalizeInputKind, parseMarkitdownInput, resolveOutputPath } from "./validation.js";
+import { CommandResult, DEFAULT_COMMAND_TIMEOUT_MS, classifyFailureCode } from "./failures.js";
 
-export type CommandRunner = (command: string, args: string[]) => { exitCode: number; stdout: string; stderr: string };
+export type CommandRunner = (command: string, args: string[]) => CommandResult;
 
 export interface InvokeOptions {
   input: string;
@@ -16,38 +18,40 @@ export interface InvokeOptions {
   runner?: CommandRunner;
 }
 
-function defaultRunner(command: string, args: string[]): { exitCode: number; stdout: string; stderr: string } {
+function runCommand(command: string, args: string[]): CommandResult {
   const result = spawnSync(command, args, {
     encoding: "utf8",
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: DEFAULT_COMMAND_TIMEOUT_MS,
   });
 
   if (result.error) {
     const error = result.error as NodeJS.ErrnoException;
+    if (error.code === "ETIMEDOUT") {
+      return {
+        exitCode: 124,
+        stdout: "",
+        stderr: `command timed out after ${DEFAULT_COMMAND_TIMEOUT_MS}ms`,
+        timedOut: true,
+        failureCode: "timeout",
+      };
+    }
+
     if (error.code === "ENOENT") {
-      const fallback = spawnSync("py", ["-m", "markitdown", ...args], {
-        encoding: "utf8",
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      if (!fallback.error) {
-        return {
-          exitCode: fallback.status ?? 0,
-          stdout: fallback.stdout?.toString() ?? "",
-          stderr: fallback.stderr?.toString() ?? "",
-        };
-      }
       return {
         exitCode: 127,
         stdout: "",
-        stderr: `command not found: ${command}; fallback py -m markitdown also unavailable. Install markitdown and ensure it is on PATH.`,
+        stderr: `command not found: ${command}`,
+        failureCode: "tool_missing",
       };
     }
+
     return {
       exitCode: 1,
       stdout: "",
       stderr: error.message,
+      failureCode: "command_failed",
     };
   }
 
@@ -58,15 +62,55 @@ function defaultRunner(command: string, args: string[]): { exitCode: number; std
   };
 }
 
-function getArgs(manifest: CapabilityManifest, inputPath: string): string[] {
-  return (manifest.runtime.args ?? []).map((value) => (value === "{input}" ? inputPath : value));
+function defaultRunner(command: string, args: string[]): CommandResult {
+  const primary = runCommand(command, args);
+  if (primary.failureCode !== "tool_missing") {
+    return primary;
+  }
+
+  const fallback = runCommand("py", ["-m", "markitdown", ...args]);
+  if (fallback.failureCode === "tool_missing") {
+    return {
+      exitCode: 127,
+      stdout: "",
+      stderr: `command not found: ${command}; fallback py -m markitdown also unavailable. Install markitdown and ensure it is on PATH.`,
+      failureCode: "tool_missing",
+    };
+  }
+
+  return fallback;
 }
 
-function normalizePath(baseDir: string, value: string): string {
-  if (!value) {
-    throw new Error("input is required");
-  }
-  return resolve(baseDir, value);
+function failureOutput(
+  capabilityId: "markitdown",
+  failureCode: FailureCode,
+  error: string,
+  message = "",
+  timedOut = false,
+): MarkitdownOutput {
+  return {
+    ok: false,
+    capabilityId,
+    markdown: "",
+    markdownChars: 0,
+    warnings: [message],
+    failureCode,
+    timedOut,
+    error,
+  };
+}
+
+function classifyCommandFailure(result: CommandResult): FailureCode {
+  return classifyFailureCode({
+    exitCode: result.exitCode,
+    timedOut: result.timedOut ?? false,
+    runnerFailureCode: result.failureCode,
+    errorMessage: result.stderr,
+  });
+}
+
+function getArgs(manifest: CapabilityManifest, inputPath: string): string[] {
+  return (manifest.runtime.args ?? []).map((value) => (value === "{input}" ? inputPath : value));
 }
 
 function isUrlLike(value: string): boolean {
@@ -81,78 +125,101 @@ export async function invokeCapability(
   const { baseDir: root } = getBasePaths(baseDir);
   const { manifest } = loadCapabilityManifestById(root, capabilityId);
   if (manifest.runtime.kind !== "local_command") {
-    throw new Error(`Unsupported runtime kind ${manifest.runtime.kind}`);
+    return failureOutput(manifest.id as "markitdown", "command_failed", `Unsupported runtime kind ${manifest.runtime.kind}`);
   }
 
-  const inputKind = options.inputKind ?? "path";
   const runner = options.runner ?? defaultRunner;
+  const capabilityIdTyped = manifest.id as "markitdown";
   let tempPath: string | null = null;
   let commandInput = "";
 
   try {
+    let inputKind: "path" | "inline";
+    try {
+      inputKind = normalizeInputKind(options.inputKind);
+    } catch {
+      return failureOutput(capabilityIdTyped, "input_invalid", "inputKind must be one of: path | inline");
+    }
+
+    let input: string;
+    try {
+      input = parseMarkitdownInput(options.input);
+    } catch {
+      return failureOutput(capabilityIdTyped, "input_invalid", "input must be a non-empty string");
+    }
+
     if (inputKind === "inline") {
       const tmp = mkdtempSync(join(tmpdir(), `capcore-${manifest.id}-`));
       tempPath = join(tmp, `inline-${Date.now()}.html`);
-      writeFileSync(tempPath, options.input, "utf8");
+      writeFileSync(tempPath, input, "utf8");
       commandInput = tempPath;
     } else {
-      if (isUrlLike(options.input)) {
-        throw new Error("URL input is not supported in MVP; use local path or inline content.");
+      if (isUrlLike(input)) {
+        return failureOutput(capabilityIdTyped, "unsupported_input", "URL input is not supported in MVP; use local path or inline content.");
       }
-      commandInput = normalizePath(root, options.input);
+      if (!input) {
+        return failureOutput(capabilityIdTyped, "input_invalid", "input is required");
+      }
+      commandInput = resolve(root, input);
       accessSync(commandInput);
     }
 
     const args = getArgs(manifest, commandInput);
     const result = runner(manifest.runtime.command, args);
-    const markdown = result.stdout;
-
     if (result.exitCode !== 0) {
-      return {
-        ok: false,
-        capabilityId: manifest.id as "markitdown",
-        markdown: "",
-        warnings: [`command exit code: ${result.exitCode}`],
-        error: result.stderr || "command execution failed",
-      };
+      const failureCode = classifyCommandFailure(result);
+      return failureOutput(
+        capabilityIdTyped,
+        failureCode,
+        result.stderr || "command execution failed",
+        `command exit code: ${result.exitCode}`,
+        result.timedOut ?? false,
+      );
     }
 
-    if (!markdown || markdown.trim().length === 0) {
-      return {
-        ok: false,
-        capabilityId: manifest.id as "markitdown",
-        markdown: "",
-        warnings: ["no markdown output"],
-        error: "command returned no markdown output",
-      };
+    const markdown = result.stdout;
+    if (!isMarkdownLike(markdown)) {
+      return failureOutput(capabilityIdTyped, "output_invalid", "command output failed markdown sanity check", "invalid markdown output");
     }
 
     const includeMarkdown = !options.outputPath || options.fullOutput;
     const response: MarkitdownOutput = {
       ok: true,
-      capabilityId: manifest.id as "markitdown",
+      capabilityId: capabilityIdTyped,
       ...(includeMarkdown ? { markdown } : {}),
       markdownChars: markdown.length,
       warnings: [],
+      failureCode: "none",
     };
 
     if (options.outputPath) {
-      const outputAbs = resolve(root, options.outputPath);
-      mkdirSync(dirname(outputAbs), { recursive: true });
-      writeFileSync(outputAbs, markdown, "utf8");
-      response.outputPath = outputAbs;
+      try {
+        const outputAbs = resolveOutputPath(root, options.outputPath);
+        mkdirSync(dirname(outputAbs), { recursive: true });
+        writeFileSync(outputAbs, markdown, "utf8");
+        response.outputPath = outputAbs;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown output error";
+        if (/inside base directory/i.test(message)) {
+          return failureOutput(capabilityIdTyped, "path_policy_violation", message, "output path must resolve inside base directory");
+        }
+        return failureOutput(capabilityIdTyped, "unknown", message, "output path handling failed");
+      }
     }
 
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return {
-      ok: false,
-      capabilityId: manifest.id as "markitdown",
-      markdown: "",
-      warnings: ["invoke failed"],
-      error: message,
-    };
+    if (/inside base directory/i.test(message)) {
+      return failureOutput(capabilityIdTyped, "path_policy_violation", message, "output path must resolve inside base directory");
+    }
+    if (/inputKind must be one of/i.test(message) || /input must be a non-empty string/i.test(message)) {
+      return failureOutput(capabilityIdTyped, "input_invalid", message);
+    }
+    if (/not supported/i.test(message)) {
+      return failureOutput(capabilityIdTyped, "unsupported_input", message);
+    }
+    return failureOutput(capabilityIdTyped, "unknown", message);
   } finally {
     if (tempPath) {
       rmSync(tempPath, { force: true });

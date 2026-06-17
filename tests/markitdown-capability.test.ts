@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appendOutcome } from "../src/outcome.js";
 import { invokeCapability } from "../src/invoke.js";
@@ -7,7 +7,7 @@ import { invokeCapability } from "../src/invoke.js";
 const repoRoot = process.cwd();
 
 function createFixtureRoot(): string {
-  const root = mkdtempSync(join(process.cwd(), "capability-core-markitdown-"));
+  const root = mkdtempSync(join(process.cwd(), "capability-control-markitdown-"));
   mkdirSync(join(root, "capabilities", "markitdown", "fixtures"), { recursive: true });
   cpSync(join(repoRoot, "capabilities", "markitdown"), join(root, "capabilities", "markitdown"), { recursive: true });
   mkdirSync(join(root, "evidence"), { recursive: true });
@@ -39,6 +39,7 @@ describe("markitdown capability", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(result.failureCode).toBe("none");
     expect(result.markdown).toContain("Sample");
     expect(result.markdown).toContain("Hello capability core.");
     expect(result.markdownChars).toBeGreaterThan(0);
@@ -65,6 +66,7 @@ describe("markitdown capability", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(result.failureCode).toBe("none");
     expect(result.markdown).toBeUndefined();
     expect(result.markdownChars).toBeGreaterThan(0);
     expect(existsSync(outputFile)).toBe(true);
@@ -87,10 +89,86 @@ describe("markitdown capability", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(result.failureCode).toBe("none");
     expect(result.markdown).toContain("Sample");
     expect(result.markdown).toContain("Hello capability core.");
     expect(result.outputPath).toBe(resolve(outputFile));
     expect(result.markdownChars).toBeGreaterThan(0);
+  });
+
+  it("rejects invalid inputKind", async () => {
+    const sample = join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: sample,
+      inputKind: "definitely-invalid" as "path",
+      runner: () => ({
+        exitCode: 0,
+        stdout: "# Sample\nHello capability core.",
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.failureCode).toBe("input_invalid");
+    expect(result.error).toContain("inputKind");
+  });
+
+  it("rejects output that is outside project root", async () => {
+    const sample = join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html");
+    const outsideOutput = join(dirname(tempRoot), "outside.md");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: sample,
+      inputKind: "path",
+      outputPath: "../outside.md",
+      runner: () => ({
+        exitCode: 0,
+        stdout: "# Sample\nHello capability core.",
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.failureCode).toBe("path_policy_violation");
+    expect(result.error).toContain("outputPath");
+    expect(existsSync(outsideOutput)).toBe(false);
+  });
+
+  it("allows output paths nested inside project root", async () => {
+    const sample = join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html");
+    const outputPath = join("nested", "inside", "out.md");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: sample,
+      inputKind: "path",
+      outputPath,
+      runner: () => ({
+        exitCode: 0,
+        stdout: "# Sample\nHello capability core.",
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.failureCode).toBe("none");
+    expect(result.outputPath).toBe(resolve(tempRoot, outputPath));
+    expect(existsSync(result.outputPath!)).toBe(true);
+    expect(readFileSync(result.outputPath!, "utf8")).toContain("Sample");
+  });
+
+  it("rejects fake successful output with no markdown signal", async () => {
+    const sample = join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: sample,
+      inputKind: "path",
+      runner: () => ({
+        exitCode: 0,
+        stdout: "GARBAGE_NOT_MARKDOWN_OR_SOURCE_CONTENT",
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.failureCode).toBe("output_invalid");
+    expect(result.error).toContain("markdown");
   });
 
   it("appends outcome shape", () => {
@@ -121,6 +199,27 @@ describe("markitdown capability", () => {
     });
 
     expect(result.ok).toBe(false);
+    expect(result.failureCode).toBe("tool_missing");
     expect(result.error).toContain("markitdown not found");
+  });
+
+  it("returns timeout when runner reports timeout", async () => {
+    const sample = join(tempRoot, "capabilities", "markitdown", "fixtures", "sample.html");
+    const result = await invokeCapability(tempRoot, "markitdown", {
+      input: sample,
+      inputKind: "path",
+      runner: () => ({
+        exitCode: 124,
+        stdout: "",
+        stderr: "command timed out",
+        timedOut: true,
+        failureCode: "timeout",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.failureCode).toBe("timeout");
+    expect(result.timedOut).toBe(true);
+    expect(result.error).toContain("command timed out");
   });
 });
