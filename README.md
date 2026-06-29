@@ -33,6 +33,8 @@ The first and only capability in this MVP is `markitdown`.
   - Health events are appended to `outcomes/capability-events.jsonl`.
 - Inspect recent shared events:
   - `pnpm --silent capcontrol events --limit 10`
+- Generate a lightweight `.active/` context pack for any project:
+  - `pnpm --silent capcontrol brief --project-root . --focus workspace --tier overview --dry-run`
 - Verify (real conversion proof):
   - `pnpm capcontrol verify markitdown`
 - Invoke:

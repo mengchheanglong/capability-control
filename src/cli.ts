@@ -5,6 +5,7 @@ import { verifyCapability } from "./verify.js";
 import { invokeCapability } from "./invoke.js";
 import { healthCheck } from "./health.js";
 import { parseInvokeArgs } from "./validation.js";
+import { parseProjectBriefArgs, runProjectBrief } from "./projectBrief.js";
 
 interface ParsedArgs {
   [key: string]: string | boolean;
@@ -33,6 +34,7 @@ function usage(): never {
     "capcontrol find <query>",
     "capcontrol verify markitdown",
     "capcontrol health [capability]",
+    "capcontrol brief [--project-root <path>] [--focus <workspace|quest|doc|graph>] [--tier <summary|overview|full>] [--dry-run]",
     "capcontrol invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>] [--full-output]",
     "capcontrol events [--limit <N>]",
     "capcontrol report markitdown --outcome <success|partial|failure> --note <text>",
@@ -135,6 +137,18 @@ async function main(): Promise<void> {
       const result = healthCheck(baseDir, capability);
       console.log(JSON.stringify(result, null, 2));
       if (!result.ok) {
+        process.exit(1);
+      }
+      return;
+    }
+    case "brief": {
+      try {
+        const options = parseProjectBriefArgs(argv.slice(1), baseDir);
+        const result = runProjectBrief(options);
+        console.log(JSON.stringify(result, null, 2));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to generate project brief";
+        console.error(JSON.stringify({ ok: false, error: message }, null, 2));
         process.exit(1);
       }
       return;
