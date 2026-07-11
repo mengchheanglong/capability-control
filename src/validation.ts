@@ -1,4 +1,10 @@
 import { isAbsolute, relative, resolve } from "node:path";
+import { StrixScanMode, StrixScopeMode } from "./types.js";
+import {
+  DEFAULT_STRIX_TIMEOUT_SECONDS,
+  MAX_STRIX_TIMEOUT_SECONDS,
+  MIN_STRIX_TIMEOUT_SECONDS,
+} from "./failures.js";
 
 export type CliArgValue = string | true;
 
@@ -18,6 +24,11 @@ const INVOKE_OPTION_DEFINITIONS: Record<string, "string" | "boolean"> = {
   "input-kind": "string",
   output: "string",
   "full-output": "boolean",
+  authorized: "boolean",
+  "scan-mode": "string",
+  "scope-mode": "string",
+  "timeout-seconds": "string",
+  instruction: "string",
 };
 
 function isString(value: unknown): value is string {
@@ -74,6 +85,38 @@ export function normalizeInputKind(value: unknown): MarkitdownInputKind {
   if (value === undefined || value === "path") return "path";
   if (value === "inline") return "inline";
   throw new Error("inputKind must be one of: path | inline");
+}
+
+export function normalizeStrixScanMode(value: unknown): StrixScanMode {
+  if (value === undefined) return "quick";
+  if (value === "quick" || value === "standard" || value === "deep") return value;
+  throw new Error("scanMode must be one of: quick | standard | deep");
+}
+
+export function normalizeStrixScopeMode(value: unknown): StrixScopeMode {
+  if (value === undefined) return "full";
+  if (value === "auto" || value === "diff" || value === "full") return value;
+  throw new Error("scopeMode must be one of: auto | diff | full");
+}
+
+export function normalizeStrixTimeoutSecondsToMs(value: unknown): number {
+  if (value === undefined) return DEFAULT_STRIX_TIMEOUT_SECONDS * 1000;
+  const parsed = typeof value === "number" ? value : Number(String(value));
+  if (!Number.isSafeInteger(parsed) || String(value).trim() === "") {
+    throw new Error("--timeout-seconds must be an integer number of seconds");
+  }
+  if (parsed < MIN_STRIX_TIMEOUT_SECONDS || parsed > MAX_STRIX_TIMEOUT_SECONDS) {
+    throw new Error(`--timeout-seconds must be between ${MIN_STRIX_TIMEOUT_SECONDS} and ${MAX_STRIX_TIMEOUT_SECONDS}`);
+  }
+  return parsed * 1000;
+}
+
+export function normalizeStrixInstruction(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (!isString(value) || value.trim().length === 0) {
+    throw new Error("--instruction must be a non-empty string");
+  }
+  return value;
 }
 
 export function resolveOutputPath(baseDir: string, outputPath: string): string {

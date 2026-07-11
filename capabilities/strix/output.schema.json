@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "capabilityId",
+    "completed",
+    "findingsFound",
+    "exitCode",
+    "target",
+    "scanMode",
+    "scopeMode",
+    "stdoutPreview",
+    "stderrPreview",
+    "warnings",
+    "failureCode"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "capabilityId": {
+      "const": "strix"
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "findingsFound": {
+      "type": "boolean"
+    },
+    "exitCode": {
+      "type": ["integer", "null"]
+    },
+    "target": {
+      "type": ["string", "null"]
+    },
+    "scanMode": {
+      "type": "string",
+      "enum": ["quick", "standard", "deep"]
+    },
+    "scopeMode": {
+      "type": "string",
+      "enum": ["auto", "diff", "full"]
+    },
+    "runPath": {
+      "type": "string"
+    },
+    "stdoutPreview": {
+      "type": "string"
+    },
+    "stderrPreview": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "failureCode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "tool_missing",
+        "input_invalid",
+        "unsupported_input",
+        "path_policy_violation",
+        "command_failed",
+        "timeout",
+        "output_invalid",
+        "fixture_missing",
+        "verification_failed",
+        "unknown"
+      ]
+    },
+    "timedOut": {
+      "type": "boolean",
+      "default": false
+    },
+    "error": {
+      "type": "string"
+    }
+  }
+}

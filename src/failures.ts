@@ -1,6 +1,12 @@
 import { FailureCode } from "./types.js";
 
 export const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
+export const DEFAULT_COMMAND_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+export const STRIX_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+export const DEFAULT_STRIX_TIMEOUT_SECONDS = 14_400;
+export const MIN_STRIX_TIMEOUT_SECONDS = 60;
+export const MAX_STRIX_TIMEOUT_SECONDS = 86_400;
+export const DEFAULT_STRIX_TIMEOUT_MS = DEFAULT_STRIX_TIMEOUT_SECONDS * 1000;
 
 export interface CommandResult {
   exitCode: number;

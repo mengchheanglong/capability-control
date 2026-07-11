@@ -36,6 +36,7 @@ function usage(): never {
     "capcontrol health [capability]",
     "capcontrol brief [--project-root <path>] [--focus <workspace|quest|doc|graph>] [--tier <summary|overview|full>] [--dry-run]",
     "capcontrol invoke markitdown --input <path-or-inline> [--input-kind path|inline] [--output <path>] [--full-output]",
+    "capcontrol invoke strix --input <local-directory> --authorized [--scan-mode quick|standard|deep] [--scope-mode auto|diff|full] [--timeout-seconds <60-86400>] [--instruction <text>]",
     "capcontrol events [--limit <N>]",
     "capcontrol report markitdown --outcome <success|partial|failure> --note <text>",
   ].join("\n");
@@ -106,11 +107,21 @@ async function main(): Promise<void> {
         | "inline";
       const outputPath = typeof options.output === "string" ? options.output : undefined;
       const fullOutput = options["full-output"] === true;
+      const authorized = options.authorized === true;
+      const scanMode = typeof options["scan-mode"] === "string" ? options["scan-mode"] : undefined;
+      const scopeMode = typeof options["scope-mode"] === "string" ? options["scope-mode"] : undefined;
+      const timeoutSeconds = typeof options["timeout-seconds"] === "string" ? options["timeout-seconds"] : undefined;
+      const instruction = typeof options.instruction === "string" ? options.instruction : undefined;
       const result = await invokeCapability(baseDir, capability, {
         input,
         inputKind,
         outputPath,
         fullOutput,
+        authorized,
+        scanMode,
+        scopeMode,
+        timeoutSeconds,
+        instruction,
       });
       const message = result.ok ? "invoke succeeded" : result.error || result.warnings[0] || "invoke failed";
       try {

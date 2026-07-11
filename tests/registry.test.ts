@@ -9,6 +9,8 @@ function createFixtureRoot(): string {
   const root = mkdtempSync(join(process.cwd(), "capability-control-registry-"));
   mkdirSync(join(root, "capabilities", "markitdown", "fixtures"), { recursive: true });
   cpSync(join(repoRoot, "capabilities", "markitdown"), join(root, "capabilities", "markitdown"), { recursive: true });
+  mkdirSync(join(root, "capabilities", "strix"), { recursive: true });
+  cpSync(join(repoRoot, "capabilities", "strix"), join(root, "capabilities", "strix"), { recursive: true });
   mkdirSync(join(root, "evidence"), { recursive: true });
   return root;
 }
@@ -71,6 +73,77 @@ describe("registry", () => {
     expect(markitdown?.lastVerifiedAt).toBeTruthy();
   });
 
+  it("does not verify MarkItDown when contract assertions are missing", () => {
+    const evidenceDir = join(tempRoot, "evidence", "markitdown");
+    mkdirSync(evidenceDir, { recursive: true });
+    writeFileSync(
+      join(evidenceDir, "wrong-contract.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        capabilityId: "markitdown",
+        verifiedAt: new Date().toISOString(),
+        runner: { kind: "local_command", command: "markitdown" },
+        inputFixture: "capabilities/markitdown/fixtures/sample.html",
+        exitCode: 0,
+        ok: true,
+        assertions: [{ name: "some_other_assertion", ok: true }],
+        stdoutPreview: "# Sample",
+        stderrPreview: "",
+        durationMs: 12,
+      }),
+      "utf8",
+    );
+
+    const markitdown = listCapabilities(tempRoot).find((entry) => entry.id === "markitdown");
+    expect(markitdown?.status).toBe("candidate");
+  });
+
+  it("computes Strix verified status only from matching nonempty passing evidence", () => {
+    const evidenceDir = join(tempRoot, "evidence", "strix");
+    mkdirSync(evidenceDir, { recursive: true });
+    writeFileSync(
+      join(evidenceDir, "wrong-capability.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        capabilityId: "markitdown",
+        verifiedAt: new Date(Date.now() + 1_000).toISOString(),
+        runner: { kind: "local_command", command: "strix --version && docker info" },
+        inputFixture: "prerequisites",
+        exitCode: 0,
+        ok: true,
+        assertions: [{ name: "docker_daemon_reachable", ok: true }],
+        stdoutPreview: "wrong capability",
+        stderrPreview: "",
+        durationMs: 5,
+      }),
+      "utf8",
+    );
+    writeFileSync(
+      join(evidenceDir, "valid.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        capabilityId: "strix",
+        verifiedAt: new Date().toISOString(),
+        runner: { kind: "local_command", command: "strix --version && docker info" },
+        inputFixture: "prerequisites",
+        exitCode: 0,
+        ok: true,
+        assertions: [
+          { name: "strix_version_1_0_4", ok: true },
+          { name: "docker_daemon_reachable", ok: true },
+        ],
+        stdoutPreview: "strix 1.0.4",
+        stderrPreview: "",
+        durationMs: 5,
+      }),
+      "utf8",
+    );
+
+    const strix = listCapabilities(tempRoot).find((entry) => entry.id === "strix");
+    expect(strix?.status).toBe("verified");
+    expect(strix?.lastVerifiedAt).toBeTruthy();
+  });
+
   it("find returns MarkItDown for conversion queries", () => {
     const q1 = findCapabilities("convert pdf to markdown", tempRoot);
     expect(q1.length).toBeGreaterThan(0);
@@ -80,6 +153,13 @@ describe("registry", () => {
     const q2 = findCapabilities("reduce pdf context cost", tempRoot);
     expect(q2.length).toBeGreaterThan(0);
     expect(q2[0].id).toBe("markitdown");
+  });
+
+  it("find returns Strix for local security scan queries", () => {
+    const matches = findCapabilities("authorized local repo security scan", tempRoot);
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0].id).toBe("strix");
+    expect(matches[0].score).toBeGreaterThan(0);
   });
 
   it("loads manifest through read path for integrity check", () => {

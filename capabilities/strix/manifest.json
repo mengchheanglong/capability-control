@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "strix",
+  "name": "Strix",
+  "description": "Run bounded, authorized-use-only Strix security analysis against an existing local repository directory.",
+  "status": "candidate",
+  "source": {
+    "url": "https://github.com/usestrix/strix.git",
+    "pinnedRelease": "1.0.4",
+    "inspectedSourceHead": "35a35530ed9dc0a8ac7b7df299554eb9370bb720"
+  },
+  "runtime": {
+    "kind": "local_command",
+    "command": "strix",
+    "args": [
+      "-n",
+      "--target",
+      "{target}",
+      "--scan-mode",
+      "{scanMode}",
+      "--scope-mode",
+      "{scopeMode}",
+      "--config",
+      "{config}"
+    ]
+  },
+  "contracts": {
+    "inputSchema": "capabilities/strix/input.schema.json",
+    "outputSchema": "capabilities/strix/output.schema.json"
+  },
+  "whenToUse": [
+    "Use only for authorized security testing of a local repository or application directory that the operator owns or has explicit permission to assess.",
+    "Run when a bounded automated security scan is appropriate and the user has explicitly provided --authorized.",
+    "Use for local source-code or app-directory security analysis, not for probing third-party URLs, domains, IP addresses, or systems."
+  ],
+  "failureModes": [
+    "The local strix command is not installed, is not release 1.0.4, or its locked Python runtime dependencies have drifted from openai-agents 0.14.6, openai 2.44.0, and litellm 1.90.1.",
+    "Docker is not installed, the Docker daemon is unreachable, or Strix cannot start its local execution environment.",
+    "The target is missing, not a directory, or is a URL, domain, IP address, or inline input, all of which are rejected by this bounded capability.",
+    "The scan may require LLM/API credentials; capability-control must never print or persist API keys in output, evidence, or ledger records.",
+    "Strix may return exit code 2 when findings are discovered; this is treated as a completed run, not a command failure."
+  ],
+  "projection": {
+    "hermesSkill": "strix",
+    "recommendedInterface": "skill_calls_capcontrol_invoke"
+  }
+}

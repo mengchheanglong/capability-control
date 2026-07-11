@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["input", "authorized"],
+  "properties": {
+    "input": {
+      "type": "string",
+      "description": "Existing local directory to scan. URLs, domains, IPs, and inline content are rejected."
+    },
+    "inputKind": {
+      "type": "string",
+      "enum": ["path"],
+      "default": "path"
+    },
+    "authorized": {
+      "type": "boolean",
+      "const": true,
+      "description": "Must be true to confirm authorized-use-only security testing."
+    },
+    "scanMode": {
+      "type": "string",
+      "enum": ["quick", "standard", "deep"],
+      "default": "quick"
+    },
+    "scopeMode": {
+      "type": "string",
+      "enum": ["auto", "diff", "full"],
+      "default": "full"
+    },
+    "timeoutSeconds": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 86400,
+      "default": 14400,
+      "description": "Bounded scan timeout in seconds. Default is 4 hours."
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Optional Strix instruction text to pass through exactly as --instruction <text>."
+    }
+  }
+}

@@ -71,7 +71,7 @@ function isEvidenceAssertion(value: unknown): value is EvidenceAssertion {
 function isEvidenceRecord(value: unknown): value is EvidenceRecord {
   if (!isObject(value)) return false;
   if (value.schemaVersion !== 1) return false;
-  if (value.capabilityId !== "markitdown") return false;
+  if (typeof value.capabilityId !== "string" || value.capabilityId.trim().length === 0) return false;
   if (typeof value.verifiedAt !== "string") return false;
   if (!isObject(value.runner)) return false;
   if (typeof value.runner.kind !== "string" || typeof value.runner.command !== "string") return false;
@@ -82,6 +82,21 @@ function isEvidenceRecord(value: unknown): value is EvidenceRecord {
   if (typeof value.stdoutPreview !== "string" || typeof value.stderrPreview !== "string") return false;
   if (typeof value.durationMs !== "number") return false;
   return true;
+}
+
+function hasRequiredContractAssertions(capabilityId: string, assertions: EvidenceAssertion[]): boolean {
+  if (capabilityId !== "markitdown") return true;
+  const hasHeading = assertions.some((assertion) => assertion.name === "contains_markdown_heading" && assertion.ok);
+  const hasOutput = assertions.some((assertion) => assertion.name === "non_empty_output" && assertion.ok);
+  return hasHeading && hasOutput;
+}
+
+function isValidEvidenceForCapability(evidence: EvidenceRecord, capabilityId: string): boolean {
+  if (evidence.capabilityId !== capabilityId) return false;
+  if (!evidence.ok || evidence.exitCode !== 0) return false;
+  if (evidence.assertions.length === 0) return false;
+  if (!evidence.assertions.every((assertion) => assertion.ok)) return false;
+  return hasRequiredContractAssertions(capabilityId, evidence.assertions);
 }
 
 function latestEvidence(baseDir: string, capabilityId: string): EvidenceRecord | null {
@@ -100,10 +115,7 @@ function latestEvidence(baseDir: string, capabilityId: string): EvidenceRecord |
     try {
       const evidence = fileContent<unknown>(path);
       if (!isEvidenceRecord(evidence)) continue;
-      if (!evidence.ok || evidence.exitCode !== 0) continue;
-      const hasHeading = evidence.assertions.some((assertion) => assertion.name === "contains_markdown_heading" && assertion.ok);
-      const hasOutput = evidence.assertions.some((assertion) => assertion.name === "non_empty_output" && assertion.ok);
-      if (!hasHeading || !hasOutput) continue;
+      if (!isValidEvidenceForCapability(evidence, capabilityId)) continue;
       const parsedTime = Date.parse(evidence.verifiedAt);
       if (!Number.isFinite(parsedTime)) continue;
       if (parsedTime > latestTime) {

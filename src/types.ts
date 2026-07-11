@@ -25,6 +25,11 @@ export interface CapabilityManifest {
   name: string;
   description: string;
   status: CapabilityStatus;
+  source?: {
+    url: string;
+    pinnedRelease?: string;
+    inspectedSourceHead?: string;
+  };
   runtime: CapabilityRuntime;
   contracts: CapabilityContracts;
   whenToUse: string[];
@@ -93,6 +98,39 @@ export interface MarkitdownOutput {
   timedOut?: boolean;
   error?: string;
 }
+
+export type StrixScanMode = "quick" | "standard" | "deep";
+export type StrixScopeMode = "auto" | "diff" | "full";
+
+export interface StrixInput {
+  input: string;
+  inputKind?: InputKind;
+  authorized?: boolean;
+  scanMode?: StrixScanMode;
+  scopeMode?: StrixScopeMode;
+  timeoutSeconds?: number;
+  instruction?: string;
+}
+
+export interface StrixOutput {
+  ok: boolean;
+  capabilityId: "strix";
+  completed: boolean;
+  findingsFound: boolean;
+  exitCode: number | null;
+  target: string | null;
+  scanMode: StrixScanMode;
+  scopeMode: StrixScopeMode;
+  runPath?: string;
+  stdoutPreview: string;
+  stderrPreview: string;
+  warnings: string[];
+  failureCode: FailureCode;
+  timedOut?: boolean;
+  error?: string;
+}
+
+export type CapabilityOutput = MarkitdownOutput | StrixOutput;
 
 export interface VerifyResult {
   ok: boolean;
